@@ -46,16 +46,17 @@ bool read_i##NUM_BITS(FILE *f, unsigned int offset, uint##NUM_BITS##_t *result)\
     return true;\
 }
 
-READ_BITS_DECL(8)
-READ_BITS_DECL(16)
-READ_BITS_DECL(32)
-READ_BITS_DECL(64)
+READ_BITS_DECL(8);
+READ_BITS_DECL(16);
+READ_BITS_DECL(32);
+READ_BITS_DECL(64);
 
 #define SIG 0xAA55
 bool check_sig(FILE *f)
 {
     uint16_t sig;
-    if(!read_i16(f, LEN_BOOT + LEN_PART*NUM_PARTS, &sig)) return false;
+    if(!read_i16(f, LEN_BOOT + LEN_PART*NUM_PARTS, &sig))
+        return false;
     if(sig != SIG) {
         errorf("sanity check failed: %04x\n", sig);
     }
@@ -97,12 +98,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(!check_sig(f)) return 1;
+    if(!check_sig(f))
+        return 1;
 
     struct BPB_t bpb;
     read_bytes(f, 0x0, &bpb, sizeof(bpb));
 
-    if(bpb.BytsPerSec != 512 || bpb.NumFATs != 2) return 1;
+    if(bpb.BytsPerSec != 512 || bpb.NumFATs != 2)
+        return 1;
 
     uint32_t FirstFATSector = bpb.RsvdSecCnt;
     uint32_t FirstRootSector = FirstFATSector + bpb.NumFATs*bpb.FATSz16;
@@ -114,7 +117,8 @@ int main(int argc, char *argv[])
         uint32_t offset = FirstRootSector*bpb.BytsPerSec + i*32;
         uint8_t first_byte;
         read_i8(f, offset, &first_byte);
-        if(first_byte == 0) break;
+        if(first_byte == 0)
+            break;
 
         uint8_t attrib;
         read_i8(f, offset + 0x0B, &attrib);
