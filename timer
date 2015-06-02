@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+
+strt=$(python -c 'import time; print time.time()')
+
+./$1 $2 > $3
+
+
+end=$(python -c 'import time; print time.time()')
+
+
+printf "%.2f sec" "$(($end-$strt))"
