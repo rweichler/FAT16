@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     uint32_t SectorCount = bpb.TotSec32 - FirstDataSector;
 
     for(int i = 0; true; i++) {
-        uint32_t offset = FirstRootSector*BYTES_PER_SECTOR + i*32;
+        uint32_t offset = FirstRootSector*bpb.BytsPerSec + i*32;
         uint8_t first_byte;
         read_i8(f, offset, &first_byte);
         if(first_byte == 0) break;
