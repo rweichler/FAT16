@@ -84,6 +84,30 @@ bool check_num_fats(FILE *f)
     return num == NUM_FATS;
 }
 
+#pragma pack(push, 1)
+struct BPB_t {
+    uint8_t jmpBoot[3];
+    char OEMName[8];
+    uint16_t BytsPerSec;
+    uint8_t SecPerClus;
+    uint16_t RsvdSecCnt; //reserved sector count
+
+    uint8_t NumFATs;
+    uint16_t RootEntCnt;
+    uint16_t TotSec16;
+    uint8_t Media;
+    uint16_t FATSz16; //sectors per FAT
+    uint16_t SecPerTrk; //sectors per cluster
+    uint16_t NumHeads;
+    uint32_t HiddSec;
+
+    uint32_t TotSec32; //total size
+
+
+    char null;
+};
+#pragma pack(pop)
+
 int main(int argc, char *argv[])
 {
     char *filename = argc < 2 ? "fat.ima" : argv[1];
@@ -95,28 +119,18 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if(!check_sig(f) || !check_bps(f) || !check_num_fats(f)) return 1;
+    if(!check_sig(f)) return 1;
 
-    uint16_t RsvdSecCnt; //reserved sector count
-    if(!read_i16(f, 0x0E, &RsvdSecCnt)) return 1;
+    struct BPB_t bpb;
+    read_bytes(f, 0x0, &bpb, sizeof(bpb));
 
-    uint16_t FATz16; //sectors per FAT
-    if(!read_i16(f, 0x16, &FATz16)) return 1;
+    if(bpb.BytsPerSec != 512 || bpb.NumFATs != 2) return 1;
 
-    uint8_t SecPerClus; //sectors per cluster
-    if(!read_i8(f, 0x0D, &SecPerClus)) return 1;
-
-    uint16_t RootEntCnt;
-    if(!read_i16(f, 0x11, &RootEntCnt)) return 1;
-
-    uint32_t TotSec32; //total size
-    if(!read_i32(f, 0x20, &TotSec32)) return 1;
-
-    uint32_t FirstFATSector = RsvdSecCnt;
-    uint32_t FirstRootSector = FirstFATSector + NUM_FATS*FATz16;
-    uint32_t RootDirectorySectors = RootEntCnt*32/512;
+    uint32_t FirstFATSector = bpb.RsvdSecCnt;
+    uint32_t FirstRootSector = FirstFATSector + bpb.NumFATs*bpb.FATSz16;
+    uint32_t RootDirectorySectors = bpb.RootEntCnt*32/512;
     uint32_t FirstDataSector = FirstRootSector + RootDirectorySectors;
-    uint32_t SectorCount = TotSec32 - FirstDataSector;
+    uint32_t SectorCount = bpb.TotSec32 - FirstDataSector;
 
     for(int i = 0; true; i++) {
         uint32_t offset = FirstRootSector*BYTES_PER_SECTOR + i*32;
@@ -135,11 +149,6 @@ int main(int argc, char *argv[])
         read_bytes(f, offset, name, sizeof(name));
         printf("%s\n", name);
     }
-
-    uint32_t x;
-    char y[2] = "\x00\x02";
-    memcpy(&x, y, 2);
-    printf("\n\nx: %u\n", x);
 
     fclose(f);
 
