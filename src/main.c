@@ -62,28 +62,6 @@ bool check_sig(FILE *f)
     return sig == SIG;
 }
 
-#define BYTES_PER_SECTOR 512
-bool check_bps(FILE *f)
-{
-    uint16_t bps;
-    if(!read_i16(f, 0x0B, &bps)) return false;
-    if(bps != BYTES_PER_SECTOR) {
-        errorf("bps is %u, should be %u\n", bps, BYTES_PER_SECTOR);
-    }
-    return bps == BYTES_PER_SECTOR;
-}
-
-#define NUM_FATS 2
-bool check_num_fats(FILE *f)
-{
-    uint8_t num;
-    if(!read_i8(f, 0x10, &num)) return false;
-    if(num != NUM_FATS) {
-        errorf("num FATs is %u, should be %u\n", num, NUM_FATS);
-    }
-    return num == NUM_FATS;
-}
-
 #pragma pack(push, 1)
 struct BPB_t {
     uint8_t jmpBoot[3];
