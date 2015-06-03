@@ -29,7 +29,6 @@ bool read_bytes(FILE *f, unsigned int offset, void *buf, unsigned int length)
         return false;
     }
 
-
     return true;
 }
 
@@ -112,7 +111,6 @@ enum dirattr_t {
 };
 #pragma pack(pop)
 
-
 uint16_t get_next_cluster(FILE *f, struct BPB_t *bpb, uint16_t cluster)
 {
     uint16_t result;
@@ -125,7 +123,7 @@ void print_cluster(FILE *f, struct BPB_t *bpb, struct dir_t *dir)
 {
     const uint32_t cluster_size = bpb->BytsPerSec * bpb->SecPerClus;
 
-    for(uint16_t c = dir->FstClusLO + (dir->FstClusHI << 8); c < 0xFFF8; c = get_next_cluster(f, bpb, c)) {
+    for(uint16_t c = dir->FstClusLO; c < 0xFFF8; c = get_next_cluster(f, bpb, c)) {
         char buf[cluster_size];
         //FAT16 spec says that you have to subtract 2 from the cluster number to get the actual data
         //so weird. but whatevs....
@@ -193,3 +191,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
