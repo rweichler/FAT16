@@ -197,13 +197,17 @@ int main(int argc, char *argv[])
         if(dir.Name[0] == 0)
             break;
 
-        if(dir.Attr & DIR_ATTR_LFN) {
-            //printf("<long filename>\n");
-            continue;
-        }
 
-        purplef("\n%.*s <%s>\n", (int)(sizeof(dir.Name)/sizeof(char)), dir.Name, (dir.Attr & DIR_ATTR_DIRECTORY) ? "DIR" : "FILE");
-        if(!(dir.Attr & DIR_ATTR_DIRECTORY)) {
+        purplef("\n%.*s", (int)(sizeof(dir.Name)/sizeof(char)), dir.Name);
+        const char *type;
+
+        if(dir.Attr & DIR_ATTR_LFN)
+            purplef("<LONG FILENAME>\n");
+        else if(dir.Attr & DIR_ATTR_DIRECTORY)
+            purplef("<DIRECTORY>\n");
+        else {
+            purplef("<FILE>\n");
+
             if(i == 7)
                 print_cluster(f, &bpb, &dir);
             else
