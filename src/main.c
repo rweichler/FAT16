@@ -52,7 +52,7 @@ bool check_sig(FILE *f)
 #pragma pack(push, 1)
 struct BPB_t {
     uint8_t jmpBoot[3];
-    char OEMName[8];
+    unsigned char OEMName[8];
     uint16_t BytsPerSec;
     uint8_t SecPerClus;
     uint16_t RsvdSecCnt;
@@ -87,7 +87,7 @@ uint32_t BPB_Data_Sector_count(struct BPB_t *bpb)
 }
 
 struct dir_t {
-    char Name[11];
+    unsigned char Name[11];
     uint8_t Attr;
     uint8_t NTRes;
     uint8_t CrtTimeTenth;
@@ -162,13 +162,17 @@ int main(int argc, char *argv[])
             BPB_Data_addr(&bpb)
           );
 
-    for(int i = 0; true; i++) {
+    for(int i = 0; i < bpb.RootEntCnt; i++) {
         struct dir_t dir;
         uint32_t offset = BPB_Root_addr(&bpb) + i*32;
         read_bytes(f, offset, &dir, sizeof(dir));
 
         if(dir.Name[0] == 0)
             break;
+        if(dir.Name[0] == 0xE5) {
+            printf("<unused space>\n");
+            continue;
+        }
 
 
         purplef("\n%.*s", (int)(sizeof(dir.Name)/sizeof(char)), dir.Name);
@@ -181,9 +185,9 @@ int main(int argc, char *argv[])
         else {
             purplef("<FILE>\n");
 
-            if(i == 0xF)
-                print_cluster(f, &bpb, &dir);
-            else
+            //if(i == 0xF)
+            //    print_cluster(f, &bpb, &dir);
+            //else
                 printf("<omitting print>\n");
         }
     }
