@@ -77,8 +77,9 @@ uint32_t BPB_Root_addr(struct BPB_t *bpb)
     return BPB_FAT_addr(bpb) + bpb->NumFATs * bpb->FATSz16 * bpb->BytsPerSec;
 }
 uint32_t BPB_Data_addr(struct BPB_t *bpb)
-{                               //size of root
+{
     return BPB_Root_addr(bpb) + bpb->RootEntCnt * 32;
+                                //size of root
 }
 uint32_t BPB_Data_Sector_count(struct BPB_t *bpb)
 {
