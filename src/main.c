@@ -122,7 +122,7 @@ struct dir_t {
     uint32_t FileSize;
 };
 enum dirattr_t {
-    DIR_ATTR_READONLY = 1,
+    DIR_ATTR_READONLY = 1 << 0,
     DIR_ATTR_HIDDEN   = 1 << 1,
     DIR_ATTR_SYSTEM   = 1 << 2,
     DIR_ATTR_VOLUMEID = 1 << 3,
