@@ -33,26 +33,6 @@ bool read_bytes(FILE *f, unsigned int offset, void *buf, unsigned int length)
     return true;
 }
 
-#define READ_BITS_DECL(NUM_BITS) \
-bool read_i##NUM_BITS(FILE *f, unsigned int offset, uint##NUM_BITS##_t *result)\
-{\
-    char buf[NUM_BITS/8];\
-    if(!read_bytes(f, offset, buf, sizeof(buf))) {\
-        return false;\
-    }\
-    *result = 0;\
-    for(int i = NUM_BITS/8 - 1; i >= 0; i--) {\
-        *result = *result << 8;\
-        *result = *result + (unsigned char)buf[i];\
-    }\
-    return true;\
-}
-
-READ_BITS_DECL(8);
-READ_BITS_DECL(16);
-READ_BITS_DECL(32);
-READ_BITS_DECL(64);
-
 #define LEN_BOOT 446
 #define LEN_PART 16
 #define NUM_PARTS 4
@@ -62,7 +42,7 @@ READ_BITS_DECL(64);
 bool check_sig(FILE *f)
 {
     uint16_t sig;
-    if(!read_i16(f, LEN_BOOT + LEN_PART*NUM_PARTS, &sig))
+    if(!read_bytes(f, LEN_BOOT + LEN_PART*NUM_PARTS, &sig, sizeof(sig)))
         return false;
     if(sig != SIG) {
         errorf("sanity check failed: %04x\n", sig);
@@ -136,8 +116,7 @@ enum dirattr_t {
 uint16_t get_next_cluster(FILE *f, struct BPB_t *bpb, uint16_t cluster)
 {
     uint16_t result;
-    read_i16(f, BPB_FAT_addr(bpb) + cluster*2, &result);
-    debugf("next cluster: 0x%x -> 0x%x\n", cluster, result);
+    read_bytes(f, BPB_FAT_addr(bpb) + cluster*2, &result, sizeof(result));
     return result;
 }
 
@@ -147,14 +126,9 @@ void print_cluster(FILE *f, struct BPB_t *bpb, struct dir_t *dir)
     const uint32_t cluster_size = bpb->BytsPerSec * bpb->SecPerClus;
 
     for(uint16_t c = dir->FstClusLO + (dir->FstClusHI << 8); c < 0xFFF8; c = get_next_cluster(f, bpb, c)) {
-        debugf("c = 0x%x, actual addr is 0x%x (which is incorrect).\n", c, BPB_Data_addr(bpb) + c*cluster_size);
-        debugf("subtracting 2 from cluster size (c = 0x%x) to get correct addr at 0x%x. ", c - 2, BPB_Data_addr(bpb) + (c-2)*cluster_size);
-#ifdef DEBUG_ON
-        redf("I HAVE NO IDEA WHY THIS WORKS!\n");
-#endif
-
         char buf[cluster_size];
-        //TODO: i have *NO IDEA* why you have to subtract 2 from the cluster ID number
+        //FAT16 spec says that you have to subtract 2 from the cluster number to get the actual data
+        //so weird. but whatevs....
         read_bytes(f, BPB_Data_addr(bpb) + (c - 2) * cluster_size, buf, sizeof(buf));
 
         printf("%.*s", (int)(sizeof(buf)), buf);
@@ -208,7 +182,7 @@ int main(int argc, char *argv[])
         else {
             purplef("<FILE>\n");
 
-            if(i == 7)
+            if(i == 0xF)
                 print_cluster(f, &bpb, &dir);
             else
                 printf("<omitting print>\n");
