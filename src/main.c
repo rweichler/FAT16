@@ -4,18 +4,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG_ON //comment this out to turn off debug mode
+#include "macros.h"
+#include "structs.h"
 
-#define errorf(fmt, ...) fprintf(stderr, "\033[0;31m<error>\033[0m "fmt , ##__VA_ARGS__)
-#ifdef DEBUG_ON
-#define debugf(fmt, ...) printf("\033[0;32m<debug>\033[0m " fmt, ##__VA_ARGS__)
-#else
-#define debugf(fmt, ...)
-#endif
-#define colorf(color, fmt, ...) printf("\033[0;" color "m" fmt "\033[0m", ##__VA_ARGS__)
-#define purplef(fmt, ...) colorf("35", fmt, ##__VA_ARGS__)
-#define redf(fmt, ...) colorf("31", fmt, ##__VA_ARGS__)
-#define greenf(fmt, ...) colorf("32", fmt, ##__VA_ARGS__)
+//BPB functions
+
+uint32_t BPB_FAT_addr(struct BPB_t *bpb)
+{
+    return bpb->RsvdSecCnt * bpb->BytsPerSec;
+}
+
+
+uint32_t BPB_Root_addr(struct BPB_t *bpb)
+{
+    return BPB_FAT_addr(bpb) + bpb->NumFATs * bpb->FATSz16 * bpb->BytsPerSec;
+}
+
+uint32_t BPB_Data_addr(struct BPB_t *bpb)
+{
+    return BPB_Root_addr(bpb) + bpb->RootEntCnt * 32;
+                                //size of root
+}
+
+uint32_t BPB_Data_Sector_count(struct BPB_t *bpb)
+{
+    return bpb->TotSec32 - BPB_Data_addr(bpb) / bpb->BytsPerSec;
+}
 
 bool read_bytes(FILE *f, unsigned int offset, void *buf, unsigned int length)
 {
@@ -24,7 +38,7 @@ bool read_bytes(FILE *f, unsigned int offset, void *buf, unsigned int length)
         return false;
     }
 
-    if(length != fread(buf, 1, length, f) && ferror(f)) {
+    if(fread(buf, 1, length, f) != length && ferror(f)) {
         errorf("error reading file\n");
         return false;
     }
@@ -48,69 +62,6 @@ bool check_sig(FILE *f)
     }
     return sig == SIG;
 }
-
-#pragma pack(push, 1)
-struct BPB_t {
-    uint8_t jmpBoot[3];
-    unsigned char OEMName[8];
-    uint16_t BytsPerSec;
-    uint8_t SecPerClus;
-    uint16_t RsvdSecCnt;
-
-    uint8_t NumFATs;
-    uint16_t RootEntCnt;
-    uint16_t TotSec16;
-    uint8_t Media;
-    uint16_t FATSz16; //sectors per FAT
-    uint16_t SecPerTrk;
-    uint16_t NumHeads;
-    uint32_t HiddSec;
-
-    uint32_t TotSec32; //total size
-};
-uint32_t BPB_FAT_addr(struct BPB_t *bpb)
-{
-    return bpb->RsvdSecCnt * bpb->BytsPerSec;
-}
-uint32_t BPB_Root_addr(struct BPB_t *bpb)
-{
-    return BPB_FAT_addr(bpb) + bpb->NumFATs * bpb->FATSz16 * bpb->BytsPerSec;
-}
-uint32_t BPB_Data_addr(struct BPB_t *bpb)
-{
-    return BPB_Root_addr(bpb) + bpb->RootEntCnt * 32;
-                                //size of root
-}
-uint32_t BPB_Data_Sector_count(struct BPB_t *bpb)
-{
-    return bpb->TotSec32 - BPB_Data_addr(bpb) / bpb->BytsPerSec;
-}
-
-struct dir_t {
-    unsigned char Name[11];
-    uint8_t Attr;
-    uint8_t NTRes;
-    uint8_t CrtTimeTenth;
-    uint16_t CrtTime;
-
-    uint16_t CrtDate;
-    uint16_t LstAccDate;
-    uint16_t FstClusHI;
-    uint16_t WrtTime;
-    uint16_t WrtDate;
-    uint16_t FstClusLO;
-    uint32_t FileSize;
-};
-enum dirattr_t {
-    DIR_ATTR_READONLY = 1 << 0,
-    DIR_ATTR_HIDDEN   = 1 << 1,
-    DIR_ATTR_SYSTEM   = 1 << 2,
-    DIR_ATTR_VOLUMEID = 1 << 3,
-    DIR_ATTR_DIRECTORY= 1 << 4,
-    DIR_ATTR_ARCHIVE  = 1 << 5,
-    DIR_ATTR_LFN      = 0xF
-};
-#pragma pack(pop)
 
 uint16_t get_next_cluster(FILE *f, struct BPB_t *bpb, uint16_t cluster)
 {
@@ -167,9 +118,9 @@ int main(int argc, char *argv[])
         uint32_t offset = BPB_Root_addr(&bpb) + i*32;
         read_bytes(f, offset, &dir, sizeof(dir));
 
-        if(dir.Name[0] == 0)
+        if(dir.Name[0] == 0) {
             break;
-        if(dir.Name[0] == 0xE5) {
+        } else if(dir.Name[0] == 0xE5) {
             printf("<unused space>\n");
             continue;
         }
@@ -178,11 +129,11 @@ int main(int argc, char *argv[])
         purplef("\n%.*s", (int)(sizeof(dir.Name)/sizeof(char)), dir.Name);
         const char *type;
 
-        if(dir.Attr & DIR_ATTR_LFN)
+        if(dir.Attr & DIR_ATTR_LFN) {
             purplef("<LONG FILENAME>\n");
-        else if(dir.Attr & DIR_ATTR_DIRECTORY)
+        } else if(dir.Attr & DIR_ATTR_DIRECTORY) {
             purplef("<DIRECTORY>\n");
-        else {
+        } else {
             purplef("<FILE>\n");
 
             //if(i == 0xF)
